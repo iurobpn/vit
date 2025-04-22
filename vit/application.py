@@ -212,6 +212,7 @@ class Application:
         self.action_manager_registrar.register('TASK_WAIT', self.task_action_wait)
         self.action_manager_registrar.register('TASK_EDIT', self.task_action_edit)
         self.action_manager_registrar.register('TASK_SHOW', self.task_action_show)
+        self.action_manager_registrar.register('TASK_DUE',  self.task_action_due)
 
     def default_keybinding_replacements(self):
         import json
@@ -408,6 +409,12 @@ class Application:
                         self.table.flash_focus()
                         self.update_report()
                         self.activate_message_bar('Annotated task %s' % self.model.task_id(task['uuid']))
+                elif op == 'due':
+                    uuid = metadata['uuid']
+                    new_due = f"due:{data['text']}"
+                    if self.execute_command(['task', uuid, 'modify', new_due], wait=self.wait):
+                        tid = self.model.task_id(uuid)
+                        self.activate_message_bar(f'Task {tid} due set to {new_due}')
                 elif op == 'tag':
                     task = self.model.task_tags(metadata['uuid'], args)
                     if task:
@@ -859,6 +866,13 @@ class Application:
         if uuid:
             self.execute_command(['task', uuid, 'info'], update_report=False)
             self.task_list.focus_by_task_uuid(uuid)
+
+    def task_action_due(self):
+        """Prompt for a new due date on the focused task."""
+        uuid, _ = self.get_focused_task()
+        if uuid:
+            # pops up “Due: ” prompt, fills {uuid} under the hood
+            self.activate_command_bar('due', 'Due: ', {'uuid': uuid})
 
     def get_available_task_columns(self):
         returncode, stdout, stderr = self.command.run(['task', '_columns'], capture_output=True)
